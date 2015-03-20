@@ -1,13 +1,6 @@
-<link href='http://fonts.googleapis.com/css?family=Old+Standard+TT:400,400italic' rel='stylesheet' type='text/css'>
-<style type="text/css">
-  #md_preview {
-    font-family: 'Old Standard TT', serif;
-  }
-</style>
-
 <br/>
 <br/>
-<p align="center" style="font-size: 2.5em">Tinykdump</p>
+<p align="center">#Tinykdump</p>
 <p align="center">Improving kernel crash analysis</p>
 
 <br/>
@@ -109,17 +102,6 @@ Name: Felix Schnizlein<br/>
 E-Mail: felix@none.io<br/>
 IRC: felixsch (in freenode and oftc)<br/>
 Wiki page: [https://fedoraproject.org/wiki/GSOC_2015/Student_Application_felixsch](https://fedoraproject.org/wiki/GSOC_2015/Student_Application_felixsch)
-
-
-
-[1]https://www.kernel.org/doc/Documentation/kdump/kdump.txt
-[2]
-[3]
-[4]
-[5]
-[6] Ein link zu aktuellen CMA implementierung und einer poc implementierung
-[7]
-
 
 
 
