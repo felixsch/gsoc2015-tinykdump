@@ -1,6 +1,6 @@
 <br/>
 <br/>
-<p align="center">#Tinykdump</p>
+<p align="center">Tinykdump</p>
 <p align="center">Improving kernel crash analysis</p>
 
 <br/>
