@@ -66,7 +66,7 @@ Implement a proof-of-concept python service which allows basic kexec loading (wi
 
 
 * #####27 April - 6 May (pre-coding phase)
-* Write the real CMA kernel patch _(Vacation from 6 till 11 May)_
+Write the real CMA kernel patch _(Vacation from 6 till 11 May)_
 
 * #####11 May — 24 May (pre-coding phase)
 Testing the CMA patch implementation and debugging/fixing potential issues. Getting the patch community reviewed. Writing a blogpost about my progress, the current status of my work and my new insights.
