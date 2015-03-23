@@ -8,18 +8,18 @@
 
 ###Summary
 
-In every software development project the error analysis is one of most crucial parts when resolving issues. In the current Linux kernel kdump[1] is used to provide system logs and memory dumps immediately after the system crashes. This project's intention is to minimize issues within the kdump infrastructure and make use of the features of the modern Linux kernel.
+In every software development project the error analysis is one of most crucial parts when resolving issues. In the current Linux kernel kdump<sup>[1](#kdump)</sup> is used to provide system logs and memory dumps immediately after the system crashes. This project's intention is to minimize issues within the kdump infrastructure and make use of the features of the modern Linux kernel.
 
 ###The project
 
-Advanced kernel debugging relies on a mechanism for analying the root cause of a kernel crash. Kdump provides a memory dump and kernel buffer of the crashed kernel. The current implementation uses kexec to load a second kernel, the crashkernel, which is executed when the first kernel crashes, to capture the desired information. To store the crashkernel, kexec reserves a fixed amount of physical memory which is available during kernel's start. Currently every distribution ship there own tools to manage loading the crashkernel image. Fedoras implementation uses dracut to prepare the crashkernel image. The generated crashdump can be stored in several ways (harddisk, nfs-storage, usb, via ssh).
+Advanced kernel debugging relies on a mechanism for analying the root cause of a kernel crash. Kdump provides a memory dump and kernel buffer of the crashed kernel. The current implementation uses kexec<sup>[1](#kdump)</sup> to load a second kernel, the crashkernel, which is executed when the first kernel crashes, to capture the desired information. To store the crashkernel, kexec reserves a fixed amount of physical memory which is available during kernel's start. Currently every distribution ship there own tools to manage loading the crashkernel image. Fedoras implementation<sup>[2](#kexec-tools)</sup> uses dracut to prepare the crashkernel image. The generated crashdump can be stored in several ways (harddisk, nfs-storage, usb, via ssh).
 
-The goal of the project is to resolve current issues and provide a more generic reliable way of retrieving kernel crash dumps. Furthermore, it will coexist with the current kdump implementation. In order to remove the restriction of reserving the crashkernel memory at startup which renders the memory useless until a crashkernel is loaded, the kernel-side code of kexec will be improved by using the new re-factored contiguous memory allocator (CMA)[2]. This makes the reserved memory reusable to movable pages until the crashkernel is loaded.
+The goal of the project is to resolve current issues and provide a more generic reliable way of retrieving kernel crash dumps. Furthermore, it will coexist with the current kdump implementation. In order to remove the restriction of reserving the crashkernel memory at startup which renders the memory useless until a crashkernel is loaded, the kernel-side code of kexec will be improved by using the new re-factored contiguous memory allocator<sup>[3](#cma)</sup> (CMA). This makes the reserved memory reusable to movable pages until the crashkernel is loaded.
 
 Current crashkernel debugging is tedious because of the lack of a reliable way to make the kernel mode settings (KMS) cooperate with the kdump crashkernel, as this almost always results in no usable display output.
-To provide a way of debugging the crashkernel, pstore will be utilized to store the crashkernel's console output.
+To provide a way of debugging the crashkernel, pstore<sup>[4](#pstore)</sup> will be utilized to store the crashkernel's console output.
 
-Fedora's current implementation of the kdump service is powerful and offers several features. All the features comes with the price someone maintaining and testing the implementation. This might work in a static environment where the kernel rarely changes but Fedora is based on fast-paced development and therefore the changes happen frequently. Tinykdump will reduce features to gain more maintainability. The current kdump service utilizes dracut[8] to generate the kernel images. To overcome the dependency on dracut, the goal is to write a service which generates kernel images by using the busybox-toolchain, usb drivers and makedumpfile. Therefore, instead of supporting several ways of storing the crashdump , tinykdump will only support external usb drives.
+Fedora's current implementation of the kdump service is powerful and offers several features. All the features comes with the price someone maintaining and testing the implementation. This might work in a static environment where the kernel rarely changes but Fedora is based on fast-paced development and therefore the changes happen frequently. Tinykdump will reduce features to gain more maintainability. The current kdump service utilizes dracut<sup>[5](#dracut)</sup> to generate the kernel images. To overcome the dependency on dracut, the goal is to write a service which generates kernel images by using the busybox-toolchain, usb drivers and makedumpfile. Therefore, instead of supporting several ways of storing the crashdump , tinykdump will only support external usb drives.
 
 ###Benefits for Fedora and open-source community
 
@@ -44,9 +44,10 @@ Instead of reserving the memory at kernel start up, a new CMA area is initialize
 Pstore uses a generic storage system where new pstore types can easily added. To add support for kexec, `PSTORE_TYPE_KEXEC_CONSOLE` is added to `enum pstore_type_id`. To capture the actual console output a new console is created and registered to the system via `register_console` which uses `psinfo` to write to available pstore.
 
 * #####Implementing a python based tinykdump service
-The new python services will be based on the current kdump implementation of Fedora[9]. The `configparser` module of the standard python library is used to parse configuration which is located in `/etc/default/tinykdump`. The initramfs which captures the dump and stores them on the usb drive uses a static linked busybox (which is available via Fedora packages) and makedumpfile from kexec-tools.
+The new python services will be based on the current kdump implementation of Fedora. The `configparser` module of the standard python library is used to parse configuration which is located in `/etc/default/tinykdump`. The initramfs which captures the dump and stores them on the usb drive uses a static linked busybox (which is available via Fedora packages) and makedumpfile from kexec-tools.
 Initramfs generation is done the manually by generating the directory structure in `/var/run/tinykdump` and compressing it using cpio. The currently installed kernel is used as crashkernel. If no reserved memory is found, the service tries to write the size, determined by the size of the crashkernel image generated earlier, to `/sys/kernel/kexec_crash_size`. If memory has already been reserved and the size is greater than required, try to shrink the reserved memory.
 Functions which are supported by the python service are:
+
 ```
     -c | --c <config> use custom config location
     -b | --build build/update initramfs image
@@ -101,7 +102,15 @@ I'm happy to maintain the tinykdump package in Fedora.
 Name: Felix Schnizlein<br/>
 E-Mail: felix@none.io<br/>
 IRC: felixsch (in freenode and oftc)<br/>
-Wiki page: [https://fedoraproject.org/wiki/GSOC_2015/Student_Application_felixsch](https://fedoraproject.org/wiki/GSOC_2015/Student_Application_felixsch)
+Wiki page: [https://fedoraproject.org/wiki/GSOC_2015/Student_Application_felixsch](https://fedoraproject.org/wiki/GSOC_2015/Student_Application_felixsch)<br/>
+Source of the proposal: [https://github.com/felixsch/gsoc2015-tinykdump](https://github.com/felixsch/gsoc2015-tinykdump)
 
 
+###Resources
+
+1. <span id="kdump">Kernel Documentation [https://www.kernel.org/doc/Documentation/kdump/kdump.txt](https://www.kernel.org/doc/Documentation/kdump/kdump.txt)</span>
+2. <span id="kexec-tools">Fedora's kexec-tools git repository [http://pkgs.fedoraproject.org/cgit/kexec-tools.git/](http://pkgs.fedoraproject.org/cgit/kexec-tools.git/)</span>
+3. <span id="cma">Article Contigious Memory Allocator [http://lwn.net/Articles/486301/](http://lwn.net/Articles/486301/)</span>
+4. <span id="pstore">Kernel Documentation [https://www.kernel.org/doc/Documentation/ABI/testing/pstore](https://www.kernel.org/doc/Documentation/ABI/testing/pstore)</span>
+5. <span id="dracut">Dracut wiki [https://dracut.wiki.kernel.org/index.php/Main_Page](https://dracut.wiki.kernel.org/index.php/Main_Page)</span>
 
