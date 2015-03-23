@@ -37,15 +37,15 @@ Fedora's current implementation of the kdump service is powerful and offers seve
 ###Implementation details
 
 * #####kexec dynamic memory reservation
-Instead of reserving the memory at kernel start up, a new CMA area is initialized. By using a wrapper function `crash_init_reserve_memory(...)` which calls `cma_init_reserve_mem(..)` architecture depended code can be injected. Until now the currently used `struct resource crashk_res` is still initialized to default values, to do not break compatibility with kexec-tools. On write to `/sys/kernel/kexec_crash_size` memory allocation is triggered and `crash_contigious_request(..)` is called. `crash_contigious_request(..)` uses `cma_alloc` to move used pages aside. In addition, `crashk_res` is updated to the allocated space from `cma_alloc` and inserted into `iomem_resources`. By using a new configuration flag `CONFIG_KEXEC_CMA` this feature can be optional enabled.
+Instead of reserving the memory at kernel start up, a new CMA area is initialized. By using a wrapper function `crash_init_reserve_memory(...)` which calls `cma_init_reserve_mem(..)` architecture depended code can be injected. Until now the currently used `struct resource crashk_res` is still initialized to default values, to not break compatibility with kexec-tools. On write to `/sys/kernel/kexec_crash_size` memory allocation is triggered and `crash_contigious_request(..)` is called. `crash_contigious_request(..)` uses `cma_alloc` to move used pages aside. In addition, `crashk_res` is updated to the allocated space from `cma_alloc` and inserted into `iomem_resources`. By using a new configuration flag `CONFIG_KEXEC_CMA` this feature can be optional enabled.
 
 
 * #####Using pstore to log console crashkernel output
-Pstore uses a generic storage system where new pstore types can easily added. To add support for kexec, `PSTORE_TYPE_KEXEC_CONSOLE` is added to `enum pstore_type_id`. To capture the actual console output a new console is created and registered to the system via `register_console` which uses `psinfo` to write to available pstore. (how to determine if we are in a crashkernel ???)
+Pstore uses a generic storage system where new pstore types can easily added. To add support for kexec, `PSTORE_TYPE_KEXEC_CONSOLE` is added to `enum pstore_type_id`. To capture the actual console output a new console is created and registered to the system via `register_console` which uses `psinfo` to write to available pstore.
 
 * #####Implementing a python based tinykdump service
 The new python services will be based on the current kdump implementation of Fedora[9]. The `configparser` module of the standard python library is used to parse configuration which is located in `/etc/default/tinykdump`. The initramfs which captures the dump and stores them on the usb drive uses a static linked busybox (which is available via Fedora packages) and makedumpfile from kexec-tools.
-Initramfs generation is done the manually by generating the directory structure in `/var/run/tinykdump` and compressing it using cpio. The currently installed kernel is used as crashkernel. If no reserved memory is found, the service tries to write the size, determined by the size of the crashkernel image generated earlier, to `/sys/kernel/kexec_crash_size`. If CMA support is enabled the memory is reserved, otherwise it failure. If memory has already been reserved and the size is greater than required, try to shrink the reserved memory.
+Initramfs generation is done the manually by generating the directory structure in `/var/run/tinykdump` and compressing it using cpio. The currently installed kernel is used as crashkernel. If no reserved memory is found, the service tries to write the size, determined by the size of the crashkernel image generated earlier, to `/sys/kernel/kexec_crash_size`. If memory has already been reserved and the size is greater than required, try to shrink the reserved memory.
 Functions which are supported by the python service are:
 ```
     -c | --c <config> use custom config location
@@ -59,10 +59,10 @@ Functions which are supported by the python service are:
 ###Timetable
 
 * #####Now — 2 April (pre-selection phase)
-Looking into the kernel sources to fully grasp the concept of CMA and pstore. Working on proof-of-concept patches for dynamic memory reservation and crashkernel pstore integration. Discussing possible real implementations. _(Vacation from 2 till 6 April)_
+Looking into the kernel sources to fully grasp the concept of CMA and pstore. Working on proof-of-concept patches for dynamic memory reservation and crashkernel pstore integration. Discussing possible implementations. _(Vacation from 2 till 6 April)_
 
 * #####6 April — 27 April (pre-selection phase)
-Implement a proof-of-concept python service which allows basic kexec loading (without secure boot). Learning about how secure boot/ secure mode works and working on a testing/debugging strategy. Discuss with my mentor about the concrete implementation of the service.
+Implement a proof-of-concept python service which allows basic kexec loading (without secure boot). Learning about how secure boot/ secure mode works and working on a testing/debugging strategy. Discussing possible implementations of the service.
 
 
 * #####27 April - 6 May (pre-coding phase)
@@ -89,11 +89,11 @@ Implementing the python service with features described in "implementation detai
 Testing the service and fixing potential issues. Testing on virtual systems and hardware that is available to me. Writing  about the current status of my work on my blog.
 
 * #####1 August - 21 August (second coding phase)
-More testing and bug fixing. If further changes to the patches have to be done, it should be happen at this point. Writing documentation for the service. Creating manpages etc.
+More testing and bug fixing. If further changes to the patches have to be done, it should be happen at this point. Writing documentation for the service like creating manpages etc.
 
 * #####Future
-After Google Summer of Code I will port tinykdump to other distributions like openSUSE and debian. If not already done: Port the dynamic reservation patches to other platforms if possible.
-If desired I'm happy to maintain the tinykdump package in fFedora. 
+After Google Summer of Code I will port tinykdump to other distributions like OpenSUSE and Debian. If not already done: Port the dynamic reservation patches to other platforms if possible.
+I'm happy to maintain the tinykdump package in Fedora. 
 
 
 ###About me
