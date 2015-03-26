@@ -8,9 +8,9 @@
 
 ###Summary
 
-In every software development project error analysis is one of most crucial parts when resolving issues. In the current
-Linux kernel kdump<sup>[1](#kdump)</sup> is used to provide system logs and memory dumps immediately after the system 
-crashes. This project's intention is to minimize issues within the kdump infrastructure and make use of features of the 
+Error analysis is one of the most crucial parts when resolving issues in a software development project. In the current
+Linux kernel, kdump<sup>[1](#kdump)</sup> is used to provide system logs and memory dumps immediately after the system 
+crashes. Our project's intention is to minimize issues within the kdump infrastructure by making use of features of the 
 modern Linux kernel.
 
 ###The project
@@ -18,27 +18,27 @@ modern Linux kernel.
 Advanced kernel debugging relies on a mechanism for analyzing the root cause of a kernel crash. Kdump provides a memory
 dump and kernel buffer of the crashed kernel. The current implementation uses kexec<sup>[1](#kdump)</sup> to load a 
 second kernel, the crashkernel<sup>[*](#crashkernel)</sup>, which is executed when the first kernel crashes, to capture the desired information. To
-store the crashkernel, kexec reserves a fixed amount of physical memory which is available during kernel's start. 
-Currently every distribution ships its own tools to manage loading the crashkernel image. Fedoras implementation<sup>[2](#kexec-tools)</sup>
+store the crashkernel, kexec reserves a fixed amount of physical memory available during the main kernel's start. 
+Currently every distribution ships its own tools to manage loading of the crashkernel image. Fedoras implementation<sup>[2](#kexec-tools)</sup>
 uses dracut to prepare the crashkernel image. 
 The generated crashdump can be stored in several ways (harddisk, nfs-storage, usb, via ssh).
 
 The goal of the project is to resolve current issues and provide a more generically reliable way of retrieving kernel
 crash dumps. Furthermore, it will coexist with the current kdump implementation. In order to remove the restriction of
-reserving the crashkernel memory at startup which renders the memory useless until a crashkernel is loaded, the 
+reserving the crashkernel memory at startup – which renders the memory useless until a crashkernel is loaded, the 
 kernel-side code of kexec will be improved by using the new re-factored contiguous memory allocator<sup>[3](#cma)</sup> (CMA).
-This makes the reserved memory reusable to movable pages until the crashkernel is loaded.
+This renders the reserved memory reusable for movable pages before the crashkernel is loaded.
 
 Current crashkernel debugging is tedious because of the lack of a reliable way to make the kernel mode settings (KMS)
 cooperate with the kdump crashkernel, as this almost always results in no usable display output. To provide a way of 
 debugging the crashkernel, pstore<sup>[4](#pstore)</sup> will be utilized to store the crashkernel's console output.
 
-Fedora's current implementation of the kdump service is powerful and offers several features. All the features come at
-the price of someone maintaining and testing the implementation. This might work in a static environment where the kernel
+Fedora's current implementation of the kdump service is powerful and offers several features – all at the price
+of someone maintaining and testing the implementation. This might work in a static environment where the kernel
 rarely changes but Fedora is based on fast-paced development and therefore changes happen frequently. Tinykdump will 
-reduce features to gain more maintainability. The current kdump service utilizes dracut<sup>[5](#dracut)</sup> to
+reduce features to gain better maintainability. The current kdump service utilizes dracut<sup>[5](#dracut)</sup> to
 generate the kernel images. To overcome the dependency on dracut, the goal is to write a service which generates kernel
-images by using the busybox-toolchain, usb drivers and makedumpfile. Therefore, instead of supporting several ways of 
+images by using the busybox toolchain, usb drivers and makedumpfile. Therefore, instead of supporting several ways of 
 storing the crashdump, tinykdump will only support external usb drives.
 
 ###Benefits for Fedora and open-source community
@@ -46,7 +46,7 @@ storing the crashdump, tinykdump will only support external usb drives.
    * By implementing a generic service with a minimized feature set and no dependencies to any initramfs generators,
      maintaining efforts can be reduced. Likewise, porting the service to different platforms is made less troublesome.
 
-   * The goal of tinykdump is to provide a reliable and uncomplicated mechanism for debugging the kernel, in order to 
+   * Tinykdump provides a reliable and uncomplicated mechanism for debugging the kernel, in order to 
      simplify debugging kernel issues in Fedora.
    
    * Enabling pstore to store the crashkernel's console ouput makes it easier to discover potential issues in current
@@ -61,13 +61,13 @@ storing the crashdump, tinykdump will only support external usb drives.
 ###Implementation details
 
 * #####kexec dynamic memory reservation
-  Instead of reserving memory at kernel start up, a new CMA area is initialized. By using a wrapper function 
+  Instead of reserving memory at kernel startup, a new CMA area is initialized. By using a wrapper function 
   `crash_init_reserve_memory(...)` which calls `cma_init_reserve_mem(..)` architecture-specific code can be injected.
   Until now the currently used `struct resource crashk_res` is still initialized to default values, to not break 
   compatibility with kexec-tools. On write to `/sys/kernel/kexec_crash_size` memory allocation is triggered and 
   `crash_contigious_request(..)` is called. `crash_contigious_request(..)` uses `cma_alloc` to move used pages aside.
   In addition, `crashk_res` is updated to the allocated space from `cma_alloc` and inserted into `iomem_resources`. By 
-  using a new configuration flag `CONFIG_KEXEC_CMA` this feature can be optionally enabled.
+  using a new configuration flag, `CONFIG_KEXEC_CMA`, this feature can be optionally enabled.
 
 
 * #####Using pstore to log console crashkernel output
@@ -81,9 +81,9 @@ storing the crashdump, tinykdump will only support external usb drives.
   which captures the dump and stores them on the usb drive uses a statically linked busybox (which is available via 
   Fedora packages) and makedumpfile from kexec-tools. Initramfs generation is done manually by generating the directory
   structure in `/var/run/tinykdump` and compressing it using cpio. The currently installed kernel is used as crashkernel.
-  If no reserved memory is found, the service tries to write the size, determined by the size of the crashkernel image
-  generated earlier, to `/sys/kernel/kexec_crash_size`. If memory has already been reserved and the size is greater than
-  required, try to shrink the reserved memory. Functions which are supported by the python service are:
+  If no reserved memory is found, the service tries to write the size to `/sys/kernel/kexec_crash_size`, determined by the size of the crashkernel image
+  generated earlier. If memory has already been reserved and its size is greater than
+  required, the services tries to shrink the reserved memory. Functions which are supported by the python service are:
 
 ```
     -c | --c <config> use custom config location
