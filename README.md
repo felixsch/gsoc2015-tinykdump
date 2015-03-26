@@ -17,7 +17,7 @@ modern Linux kernel.
 
 Advanced kernel debugging relies on a mechanism for analyzing the root cause of a kernel crash. Kdump provides a memory
 dump and kernel buffer of the crashed kernel. The current implementation uses kexec<sup>[1](#kdump)</sup> to load a 
-second kernel, the crashkernel<sup>[*](#crashkernel)</sup>, which is executed when the first kernel crashes, to capture the desired information. To
+second kernel, the crashkernel, which is executed when the first kernel crashes, to capture the desired information. To
 store the crashkernel, kexec reserves a fixed amount of physical memory available during the main kernel's start. 
 Currently every distribution ships its own tools to manage loading of the crashkernel image. Fedoras implementation<sup>[2](#kexec-tools)</sup>
 uses dracut to prepare the crashkernel image. 
@@ -162,8 +162,3 @@ Source of the proposal: [https://github.com/felixsch/gsoc2015-tinykdump](https:/
 3. <span id="cma">Article Contigious Memory Allocator [http://lwn.net/Articles/486301/](http://lwn.net/Articles/486301/)</span>
 4. <span id="pstore">Kernel Documentation [https://www.kernel.org/doc/Documentation/ABI/testing/pstore](https://www.kernel.org/doc/Documentation/ABI/testing/pstore)</span>
 5. <span id="dracut">Dracut wiki [https://dracut.wiki.kernel.org/index.php/Main_Page](https://dracut.wiki.kernel.org/index.php/Main_Page)</span>
-
-
-###Notes
-
-*
