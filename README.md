@@ -10,7 +10,7 @@
 
 Error analysis is one of the most crucial parts when resolving issues in a software development project. In the current
 Linux kernel, kdump<sup>[1](#kdump)</sup> is used to provide system logs and memory dumps immediately after the system 
-crashes. Our project's intention is to minimize issues within the kdump infrastructure by making use of features of the 
+crashes.The project's intention is to minimize issues within the kdump infrastructure by making use of features of the 
 modern Linux kernel.
 
 ###The project
