@@ -1,0 +1,187 @@
+Index: b/arch/x86/kernel/setup.c
+===================================================================
+--- a/arch/x86/kernel/setup.c
++++ b/arch/x86/kernel/setup.c
+@@ -628,7 +628,14 @@ static void __init reserve_crashkernel(v
+ 
+ 	crashk_res.start = crash_base;
+ 	crashk_res.end   = crash_base + crash_size - 1;
++
++#ifdef CONFIG_KEXEC_USE_CMA
++	crash_cma_init_reserved_mem((phys_addr_t)crash_base,
++				    (phys_addr_t)crash_size,
++				    0, &crashk_cma);
++#else
+ 	insert_resource(&iomem_resource, &crashk_res);
++#endif
+ 
+ 	if (crash_base >= (1ULL<<32))
+ 		reserve_crashkernel_low();
+Index: b/include/linux/kexec.h
+===================================================================
+--- a/include/linux/kexec.h
++++ b/include/linux/kexec.h
+@@ -307,6 +307,16 @@ int crash_shrink_memory(unsigned long ne
+ size_t crash_get_memory_size(void);
+ void crash_free_reserved_phys_range(unsigned long begin, unsigned long end);
+ 
++#ifdef CONFIG_KEXEC_USE_CMA
++
++extern struct cma *crashk_cma;
++
++void crash_cma_init_reserved_mem(phys_addr_t base, phys_addr_t size,
++				 int order_per_bit, struct cma **res_cma);
++
++int crash_contiguous_request(unsigned long size);
++#endif /* CONFIG_KEXEC_USE_CMA */
++
+ #else /* !CONFIG_KEXEC */
+ struct pt_regs;
+ struct task_struct;
+Index: b/kernel/kexec.c
+===================================================================
+--- a/kernel/kexec.c
++++ b/kernel/kexec.c
+@@ -5,7 +5,7 @@
+  * This source code is licensed under the GNU General Public License,
+  * Version 2.  See the file COPYING for more details.
+  */
+-
++#define DEBUG
+ #define pr_fmt(fmt)	"kexec: " fmt
+ 
+ #include <linux/capability.h>
+@@ -46,6 +46,11 @@
+ #include <crypto/hash.h>
+ #include <crypto/sha.h>
+ 
++#ifdef CONFIG_KEXEC_USE_CMA
++  #include <linux/cma.h>
++#endif
++
++
+ /* Per cpu memory for storing cpu states in case of system crash. */
+ note_buf_t __percpu *crash_notes;
+ 
+@@ -83,6 +88,10 @@ struct resource crashk_low_res = {
+ 	.flags = IORESOURCE_BUSY | IORESOURCE_MEM
+ };
+ 
++#ifdef CONFIG_KEXEC_USE_CMA
++struct cma *crashk_cma;
++#endif
++
+ int kexec_should_crash(struct task_struct *p)
+ {
+ 	if (in_interrupt() || !p->pid || is_global_init(p) || panic_on_oops)
+@@ -1561,6 +1570,65 @@ unlock:
+ 	return ret;
+ }
+ 
++#ifdef CONFIG_KEXEC_USE_CMA
++
++void __init crash_cma_init_reserved_mem(phys_addr_t base, phys_addr_t size,
++					int order_per_bit, struct cma **res_cma)
++{
++	int ret;
++
++	pr_debug("Enable CMA support");
++	ret = cma_init_reserved_mem(base, size, order_per_bit, res_cma);
++
++	// maybe call arch specific code here?
++
++}
++
++
++int crash_contiguous_request(unsigned long size) {
++
++	int ret = 0;
++	unsigned int num_pages = (size % KEXEC_CRASH_MEM_ALIGN) + 1;
++
++	struct page *pages = NULL;
++	phys_addr_t base = 0;
++
++	if (kexec_crash_image) {
++		return -ENOENT;
++	}
++
++	// Could not reserve memory
++	if (!crashk_cma) {
++		return -ENOMEM;
++	}
++
++	if (crashk_res.parent) {
++		return crash_shrink_memory(size);
++	}
++
++	pr_debug("Allocating memory from CMA");
++
++	mutex_lock(&kexec_mutex);
++
++	pages = cma_alloc(crashk_cma, num_pages, KEXEC_CRASH_MEM_ALIGN);
++
++	if (!pages) {
++		ret = -ENOMEM;
++		goto unlock;
++	}
++
++	base = page_to_pfn(pages) << PAGE_SHIFT;
++
++	crashk_res.start = base;
++	crashk_res.end   = base + (phys_addr_t)size;
++
++	insert_resource(&iomem_resource, &crashk_res);
++unlock:
++	mutex_unlock(&kexec_mutex);
++	return ret;
++}
++#endif
++
+ static u32 *append_elf_note(u32 *buf, char *name, unsigned type, void *data,
+ 			    size_t data_len)
+ {
+Index: b/kernel/ksysfs.c
+===================================================================
+--- a/kernel/ksysfs.c
++++ b/kernel/ksysfs.c
+@@ -98,6 +98,7 @@ static ssize_t kexec_loaded_show(struct
+ }
+ KERNEL_ATTR_RO(kexec_loaded);
+ 
++
+ static ssize_t kexec_crash_loaded_show(struct kobject *kobj,
+ 				       struct kobj_attribute *attr, char *buf)
+ {
+@@ -120,7 +121,11 @@ static ssize_t kexec_crash_size_store(st
+ 	if (kstrtoul(buf, 0, &cnt))
+ 		return -EINVAL;
+ 
++#ifdef CONFIG_KEXEC_USE_CMA
++	ret = crash_contiguous_request(cnt);
++#else
+ 	ret = crash_shrink_memory(cnt);
++#endif
+ 	return ret < 0 ? ret : count;
+ }
+ KERNEL_ATTR_RW(kexec_crash_size);
+Index: b/arch/x86/Kconfig
+===================================================================
+--- a/arch/x86/Kconfig
++++ b/arch/x86/Kconfig
+@@ -1673,6 +1673,16 @@ config KEXEC_FILE
+ 	  for kernel and initramfs as opposed to list of segments as
+ 	  accepted by previous system call.
+ 
++config KEXEC_USE_CMA
++       bool "Reserve kexec kernel space via CMA"
++       select CMA
++       depends on KEXEC
++       depends on X86 || X86_64
++       ---help---
++        Instead of hard reserving crashkernel memory use CMA (Contiguous
++        Allocator) to make the reserved memory available to moveable pages.
++
++
+ config KEXEC_VERIFY_SIG
+ 	bool "Verify kernel signature during kexec_file_load() syscall"
+ 	depends on KEXEC_FILE

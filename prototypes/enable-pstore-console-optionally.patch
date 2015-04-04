@@ -1,0 +1,25 @@
+Index: b/fs/pstore/platform.c
+===================================================================
+--- a/fs/pstore/platform.c
++++ b/fs/pstore/platform.c
+@@ -386,10 +386,19 @@ static struct console pstore_console = {
+ 	.index	= -1,
+ };
+ 
++bool pstore_console_enabled = false;
++
++module_param_named(console, pstore_console_enabled, bool, 0400);
++MODULE_PARM_DESC(console, "enable writing console output to pstore");
++
+ static void pstore_register_console(void)
+ {
+-	register_console(&pstore_console);
++	if (pstore_console_enabled) {
++	  register_console(&pstore_console);
++	}
+ }
++
++
+ #else
+ static void pstore_register_console(void) {}
+ #endif
